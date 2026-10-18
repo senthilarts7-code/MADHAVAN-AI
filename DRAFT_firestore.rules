@@ -1,0 +1,250 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Pillar 1 & Global Safety Net: Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global Primitives
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isVerifiedUser() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        request.auth.token.email == 'senthilarts7@gmail.com'
+      );
+    }
+
+    function isParentConversationOwner(conversationId) {
+      return exists(/databases/$(database)/documents/conversations/$(conversationId)) &&
+        get(/databases/$(database)/documents/conversations/$(conversationId)).data.ownerId == request.auth.uid;
+    }
+
+    // Validation Blueprints (Pillar 2)
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['uid', 'displayName', 'email', 'language', 'theme', 'memoryEnabled', 'plan', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['uid', 'displayName', 'email', 'language', 'theme', 'memoryEnabled', 'plan', 'createdAt', 'updatedAt']) &&
+        data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128 && data.uid.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.uid == request.auth.uid &&
+        data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 100 &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 254 &&
+        data.language is string && data.language.size() <= 10 && (data.language == 'en' || data.language == 'ta') &&
+        data.theme is string && data.theme.size() <= 10 && (data.theme == 'light' || data.theme == 'dark' || data.theme == 'system') &&
+        data.memoryEnabled is bool &&
+        data.plan is string && data.plan.size() <= 10 && (data.plan == 'free' || data.plan == 'pro') &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidConversation(data) {
+      return data.keys().hasAll(['id', 'ownerId', 'title', 'toolMode', 'modelId', 'pinned', 'archived', 'summary', 'messageCount', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['id', 'ownerId', 'title', 'toolMode', 'modelId', 'pinned', 'archived', 'summary', 'messageCount', 'createdAt', 'updatedAt']) &&
+        data.id is string && data.id.size() >= 1 && data.id.size() <= 128 && data.id.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.ownerId is string && data.ownerId.size() >= 1 && data.ownerId.size() <= 128 && data.ownerId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.ownerId == request.auth.uid &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+        data.toolMode is string && data.toolMode.size() >= 1 && data.toolMode.size() <= 40 &&
+        data.modelId is string && data.modelId.size() >= 1 && data.modelId.size() <= 60 &&
+        data.pinned is bool &&
+        data.archived is bool &&
+        data.summary is string && data.summary.size() <= 2000 &&
+        data.messageCount is int && data.messageCount >= 0 && data.messageCount <= 10000 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidMessage(data) {
+      return data.keys().hasAll(['id', 'conversationId', 'ownerId', 'role', 'content', 'modelId', 'attachmentName', 'attachmentType', 'ttftMs', 'totalDurationMs', 'saved', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['id', 'conversationId', 'ownerId', 'role', 'content', 'modelId', 'attachmentName', 'attachmentType', 'ttftMs', 'totalDurationMs', 'saved', 'createdAt', 'updatedAt']) &&
+        data.id is string && data.id.size() >= 1 && data.id.size() <= 128 && data.id.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.conversationId is string && data.conversationId.size() >= 1 && data.conversationId.size() <= 128 && data.conversationId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.ownerId is string && data.ownerId.size() >= 1 && data.ownerId.size() <= 128 && data.ownerId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.ownerId == request.auth.uid &&
+        data.role is string && data.role.size() <= 20 && (data.role == 'user' || data.role == 'assistant') &&
+        data.content is string && data.content.size() >= 1 && data.content.size() <= 50000 &&
+        data.modelId is string && data.modelId.size() >= 1 && data.modelId.size() <= 60 &&
+        data.attachmentName is string && data.attachmentName.size() <= 255 &&
+        data.attachmentType is string && data.attachmentType.size() <= 100 &&
+        data.ttftMs is number && data.ttftMs >= 0 &&
+        data.totalDurationMs is number && data.totalDurationMs >= 0 &&
+        data.saved is bool &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidUserMemory(data) {
+      return data.keys().hasAll(['id', 'ownerId', 'fact', 'category', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['id', 'ownerId', 'fact', 'category', 'createdAt', 'updatedAt']) &&
+        data.id is string && data.id.size() >= 1 && data.id.size() <= 128 && data.id.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.ownerId is string && data.ownerId.size() >= 1 && data.ownerId.size() <= 128 && data.ownerId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.ownerId == request.auth.uid &&
+        data.fact is string && data.fact.size() >= 1 && data.fact.size() <= 1000 &&
+        data.category is string && data.category.size() >= 1 && data.category.size() <= 50 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidFeedbackRecord(data) {
+      return data.keys().hasAll(['id', 'ownerId', 'conversationId', 'rating', 'comment', 'createdAt']) &&
+        data.keys().hasOnly(['id', 'ownerId', 'conversationId', 'rating', 'comment', 'createdAt']) &&
+        data.id is string && data.id.size() >= 1 && data.id.size() <= 128 && data.id.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.ownerId is string && data.ownerId.size() >= 1 && data.ownerId.size() <= 128 && data.ownerId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.ownerId == request.auth.uid &&
+        data.conversationId is string && data.conversationId.size() >= 1 && data.conversationId.size() <= 128 && data.conversationId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.rating is string && data.rating.size() <= 10 && (data.rating == 'up' || data.rating == 'down') &&
+        data.comment is string && data.comment.size() <= 1000 &&
+        data.createdAt is timestamp;
+    }
+
+    // Collection 1: /users/{userId} (PII Isolated to Owner & Admin)
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isVerifiedUser() &&
+        isValidId(userId) &&
+        isOwner(userId) &&
+        isValidUserProfile(incoming()) &&
+        incoming().uid == userId &&
+        incoming().plan == 'free' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser() &&
+        isValidId(userId) &&
+        isValidUserProfile(incoming()) &&
+        incoming().uid == existing().uid &&
+        incoming().email == existing().email &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          isAdmin() ||
+          (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'language', 'theme', 'memoryEnabled', 'plan', 'updatedAt']))
+        );
+      allow delete: if isVerifiedUser() && isValidId(userId) && (isOwner(userId) || isAdmin());
+    }
+
+    // Collection 2: /conversations/{conversationId}
+    match /conversations/{conversationId} {
+      allow get: if isSignedIn() && isValidId(conversationId) && (existing().ownerId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow create: if isVerifiedUser() &&
+        isValidId(conversationId) &&
+        isValidConversation(incoming()) &&
+        incoming().id == conversationId &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser() &&
+        isValidId(conversationId) &&
+        isValidConversation(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          isAdmin() ||
+          (existing().ownerId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'toolMode', 'modelId', 'pinned', 'archived', 'summary', 'messageCount', 'updatedAt']))
+        );
+      allow delete: if isVerifiedUser() && isValidId(conversationId) && (existing().ownerId == request.auth.uid || isAdmin());
+
+      // Subcollection 3: /conversations/{conversationId}/messages/{messageId} (Master Gate)
+      match /messages/{messageId} {
+        allow get: if isSignedIn() && isValidId(conversationId) && isValidId(messageId) && (
+          (existing().ownerId == request.auth.uid && isParentConversationOwner(conversationId)) || isAdmin()
+        );
+        allow list: if isSignedIn() && isValidId(conversationId) && (
+          resource.data.ownerId == request.auth.uid || isAdmin()
+        );
+        allow create: if isVerifiedUser() &&
+          isValidId(conversationId) &&
+          isValidId(messageId) &&
+          isValidMessage(incoming()) &&
+          incoming().id == messageId &&
+          incoming().conversationId == conversationId &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          isParentConversationOwner(conversationId);
+        allow update: if isVerifiedUser() &&
+          isValidId(conversationId) &&
+          isValidId(messageId) &&
+          isValidMessage(incoming()) &&
+          incoming().id == existing().id &&
+          incoming().conversationId == existing().conversationId &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().role == existing().role &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time && (
+            isAdmin() ||
+            (existing().ownerId == request.auth.uid && isParentConversationOwner(conversationId) && incoming().diff(existing()).affectedKeys().hasOnly(['content', 'saved', 'ttftMs', 'totalDurationMs', 'updatedAt']))
+          );
+        allow delete: if isVerifiedUser() && isValidId(conversationId) && isValidId(messageId) && (
+          (existing().ownerId == request.auth.uid && isParentConversationOwner(conversationId)) || isAdmin()
+        );
+      }
+    }
+
+    // Collection 4: /memories/{memoryId}
+    match /memories/{memoryId} {
+      allow get: if isSignedIn() && isValidId(memoryId) && (existing().ownerId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow create: if isVerifiedUser() &&
+        isValidId(memoryId) &&
+        isValidUserMemory(incoming()) &&
+        incoming().id == memoryId &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser() &&
+        isValidId(memoryId) &&
+        isValidUserMemory(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          isAdmin() ||
+          (existing().ownerId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['fact', 'category', 'updatedAt']))
+        );
+      allow delete: if isVerifiedUser() && isValidId(memoryId) && (existing().ownerId == request.auth.uid || isAdmin());
+    }
+
+    // Collection 5: /feedback/{feedbackId}
+    match /feedback/{feedbackId} {
+      allow get: if isSignedIn() && isValidId(feedbackId) && (existing().ownerId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow create: if isVerifiedUser() &&
+        isValidId(feedbackId) &&
+        isValidFeedbackRecord(incoming()) &&
+        incoming().id == feedbackId &&
+        incoming().createdAt == request.time &&
+        isParentConversationOwner(incoming().conversationId);
+      allow update: if false;
+      allow delete: if isVerifiedUser() && isValidId(feedbackId) && (existing().ownerId == request.auth.uid || isAdmin());
+    }
+
+    // Collection 6: /admins/{adminId}
+    match /admins/{adminId} {
+      allow get: if isSignedIn() && isValidId(adminId) && (isOwner(adminId) || isAdmin());
+      allow list: if isAdmin();
+      allow write: if false;
+    }
+  }
+}

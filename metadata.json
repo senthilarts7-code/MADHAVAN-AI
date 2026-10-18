@@ -1,0 +1,6 @@
+{
+  "name": "MADHAVAN AI",
+  "description": "Intelligence without limits. A high-performance multimodal AI assistant platform with English and Tamil fluency, coding studio, document intelligence, voice interaction, and workspace productivity tools.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

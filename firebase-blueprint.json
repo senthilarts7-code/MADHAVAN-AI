@@ -1,0 +1,324 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated user profile, preferences, and subscription plan",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Firebase Auth UID of the user"
+        },
+        "displayName": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "User display name"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 254,
+          "description": "User email address (isolated to owner/admin)"
+        },
+        "language": {
+          "type": "string",
+          "enum": ["en", "ta"],
+          "maxLength": 10,
+          "description": "Preferred UI and assistant language"
+        },
+        "theme": {
+          "type": "string",
+          "enum": ["light", "dark", "system"],
+          "maxLength": 10,
+          "description": "Preferred visual theme (default light/white)"
+        },
+        "memoryEnabled": {
+          "type": "boolean",
+          "description": "Whether personal memory context is enabled"
+        },
+        "plan": {
+          "type": "string",
+          "enum": ["free", "pro"],
+          "maxLength": 10,
+          "description": "Subscription tier"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update server timestamp"
+        }
+      },
+      "required": ["uid", "displayName", "email", "language", "theme", "memoryEnabled", "plan", "createdAt", "updatedAt"]
+    },
+    "Conversation": {
+      "title": "Conversation",
+      "description": "A persistent AI conversation session belonging to a user",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Unique conversation ID"
+        },
+        "ownerId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "UID of the conversation owner"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Conversation title"
+        },
+        "toolMode": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "Active workspace tool mode"
+        },
+        "modelId": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "Selected Gemini model identifier"
+        },
+        "pinned": {
+          "type": "boolean",
+          "description": "Whether the conversation is pinned"
+        },
+        "archived": {
+          "type": "boolean",
+          "description": "Whether the conversation is archived"
+        },
+        "summary": {
+          "type": "string",
+          "maxLength": 2000,
+          "description": "Bounded context summary for long conversations"
+        },
+        "messageCount": {
+          "type": "integer",
+          "description": "Number of messages in the conversation"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update server timestamp"
+        }
+      },
+      "required": ["id", "ownerId", "title", "toolMode", "modelId", "pinned", "archived", "summary", "messageCount", "createdAt", "updatedAt"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "Individual message inside a conversation subcollection",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Unique message ID"
+        },
+        "conversationId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Parent conversation ID"
+        },
+        "ownerId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Owner user ID"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["user", "assistant"],
+          "maxLength": 20,
+          "description": "Message author role"
+        },
+        "content": {
+          "type": "string",
+          "maxLength": 50000,
+          "description": "Markdown text content of the message"
+        },
+        "modelId": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "Model that generated the response"
+        },
+        "attachmentName": {
+          "type": "string",
+          "maxLength": 255,
+          "description": "Optional attached file name"
+        },
+        "attachmentType": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Optional attached MIME type"
+        },
+        "ttftMs": {
+          "type": "number",
+          "description": "Measured time to first token in milliseconds"
+        },
+        "totalDurationMs": {
+          "type": "number",
+          "description": "Total generation latency in milliseconds"
+        },
+        "saved": {
+          "type": "boolean",
+          "description": "Whether this answer is bookmarked/saved by the user"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Update server timestamp"
+        }
+      },
+      "required": ["id", "conversationId", "ownerId", "role", "content", "modelId", "attachmentName", "attachmentType", "ttftMs", "totalDurationMs", "saved", "createdAt", "updatedAt"]
+    },
+    "UserMemory": {
+      "title": "UserMemory",
+      "description": "Transparent, user-editable personal memory fact",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Unique memory ID"
+        },
+        "ownerId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Owner user ID"
+        },
+        "fact": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Memory fact statement"
+        },
+        "category": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Category label (e.g. preference, project, language)"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Update server timestamp"
+        }
+      },
+      "required": ["id", "ownerId", "fact", "category", "createdAt", "updatedAt"]
+    },
+    "FeedbackRecord": {
+      "title": "FeedbackRecord",
+      "description": "User rating and feedback on AI responses",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Unique feedback ID"
+        },
+        "ownerId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Submitting user ID"
+        },
+        "conversationId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Referenced conversation ID"
+        },
+        "rating": {
+          "type": "string",
+          "enum": ["up", "down"],
+          "maxLength": 10,
+          "description": "Thumbs up or down rating"
+        },
+        "comment": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Optional feedback comment"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp"
+        }
+      },
+      "required": ["id", "ownerId", "conversationId", "rating", "comment", "createdAt"]
+    },
+    "AdminRecord": {
+      "title": "AdminRecord",
+      "description": "Server-managed administrator role record",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Admin UID"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp"
+        }
+      },
+      "required": ["uid", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Private user profiles and preferences"
+    },
+    "/conversations/{conversationId}": {
+      "schema": "Conversation",
+      "description": "User conversation metadata"
+    },
+    "/conversations/{conversationId}/messages/{messageId}": {
+      "schema": "Message",
+      "description": "Messages belonging to a specific conversation"
+    },
+    "/memories/{memoryId}": {
+      "schema": "UserMemory",
+      "description": "User personal memory records"
+    },
+    "/feedback/{feedbackId}": {
+      "schema": "FeedbackRecord",
+      "description": "User response quality feedback"
+    },
+    "/admins/{adminId}": {
+      "schema": "AdminRecord",
+      "description": "Read-only administrator lookup collection"
+    }
+  }
+}
